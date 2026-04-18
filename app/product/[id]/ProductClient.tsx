@@ -55,6 +55,7 @@ export default function ProductClient({ product, related }: Props) {
       size: selectedSize,
       image: product.media[0],
       quantity: 1,
+      color: product.colors?.[0] || "default"
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2400);
