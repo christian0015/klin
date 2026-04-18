@@ -37,10 +37,10 @@ export default function StyleSection() {
     <>
       <style>{css}</style>
 
-      <section className="ss" aria-label="Style KLIN — galerie">
+      <section className="ss" ref={rootRef} aria-label="Style KLIN — galerie">
 
         {/* ── Header éditorial ── */}
-        <div className="ss-header" ref={rootRef}>
+        <div className="ss-header">
           <div className="ss-header__left">
             <span className="ss-header__index">03</span>
             <span className="ss-header__dash" />

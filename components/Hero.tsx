@@ -122,8 +122,8 @@ export default function Hero() {
             {/* Image produit */}
             <div className="hero-img-wrap">
               <Image
-                src="/products/haut-cuir-maron.jpeg"
-                alt="Veste cuir marron — KLIN"
+                src="/products/haut-veste001-noir.jpeg"
+                alt="Veste noire minimal — KLIN, collection premium"
                 fill
                 priority
                 className="hero-img"
@@ -137,9 +137,9 @@ export default function Hero() {
 
             {/* Badge produit flottant */}
             <div className="hero-badge">
-              <span className="hero-badge__label">RAW ELEGANCE</span>
-              <span className="hero-badge__name">Veste cuir marron</span>
-              <span className="hero-badge__price">Paiement à la livraison</span>
+              <span className="hero-badge__label">NO NOISE</span>
+              <span className="hero-badge__name">Just presence.</span>
+              <span className="hero-badge__price">Disponible maintenant</span>
             </div>
 
             {/* Indicateur scroll */}

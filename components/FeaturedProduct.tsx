@@ -64,7 +64,7 @@ export default function FeaturedProduct() {
         </div>
 
         {/* ══ SPLIT LAYOUT ════════════════════════════════════════════════ */}
-        <div className="fp-inner">
+        <div className="fp-inner" id="featured">
 
           {/* ── Côté image ──────────────────────────────────────────────── */}
           <div className="fp-media">
