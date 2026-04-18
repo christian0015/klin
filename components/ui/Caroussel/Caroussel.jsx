@@ -12,7 +12,7 @@ import { collectionScrollStore } from "../../collectionScrollStore"
    APP
 ========================= */
 
-export default function App({ list = [] }) {
+export default function Caroussel({ list = [] }) {
   const radius = 1.2
   const spacing = 0.4
 

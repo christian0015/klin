@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
-import App from "./ui/Caroussel/Caroussel"
+import Caroussel from "./ui/Caroussel/Caroussel"
 import { products } from "@/lib/data"
 import { collectionScrollStore } from "./collectionScrollStore"
 
@@ -51,7 +51,7 @@ export default function CollectionSection({ list = products }) {
         background: "#000",
       }}
     >
-      <App list={list} />
+      <Caroussel list={list} />
 
       <div style={uiOverlayStyles}>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
