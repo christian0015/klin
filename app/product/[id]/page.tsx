@@ -37,20 +37,7 @@ export async function generateMetadata({
 // Server component — resolve produit + passe au client
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function ProductPages({ params }: { params: { id: string } }) {
-  const product = products.find((p) => String(p.id) === params.id);
-  if (!product) notFound();
-
-  // Produits suggérés (les autres)
-  const related = products.filter((p) => p.id !== product.id).slice(0, 2);
-
-  return <ProductClient product={product} related={related} />;
-}
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ProductPage({ params, }: { params: Promise<{ id: string }>; }) {
   const { id } = await params;
 
   const product = products.find((p) => String(p.id) === id);
