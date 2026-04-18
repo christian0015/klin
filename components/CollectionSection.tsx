@@ -8,7 +8,15 @@ import { collectionScrollStore } from "./collectionScrollStore"
 
 gsap.registerPlugin(ScrollTrigger)
 
-export default function CollectionSection({ list = products }) {
+interface Product {
+  name: string;
+  media: string[];
+  link: string;
+  description: {
+    short: string;
+  };
+}
+export default function CollectionSection({ list = products }: { list: Product[] }) {
   const sectionRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
 
