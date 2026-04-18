@@ -16,7 +16,7 @@ interface Product {
     short: string;
   };
 }
-export default function CollectionSection({ list = products }: { list: Product[] }) {
+export default function CollectionSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
 
@@ -24,7 +24,7 @@ export default function CollectionSection({ list = products }: { list: Product[]
     const section = sectionRef.current
     if (!section) return
 
-    const scrollLength = list.length * 600 // ~600px par item
+    const scrollLength = products.length * 600 // ~600px par item
 
     const trigger = ScrollTrigger.create({
       trigger: section,
@@ -43,7 +43,7 @@ export default function CollectionSection({ list = products }: { list: Product[]
     return () => {
       trigger.kill()
     }
-  }, [list.length])
+  }, [products.length])
 
   const progressPercent = Math.round(progress * 100)
 
@@ -59,7 +59,7 @@ export default function CollectionSection({ list = products }: { list: Product[]
         background: "#000",
       }}
     >
-      <Caroussel list={list} />
+      <Caroussel list={products} />
 
       <div style={uiOverlayStyles}>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
@@ -77,9 +77,9 @@ export default function CollectionSection({ list = products }: { list: Product[]
             <div style={{ ...progressBarFill, width: `${progressPercent}%` }} />
           </div>
           <span style={{ fontSize: "10px", color: "#555" }}>
-            {String(Math.round(progress * (list.length - 1)) + 1).padStart(2, "0")}
+            {String(Math.round(progress * (products.length - 1)) + 1).padStart(2, "0")}
             {" / "}
-            {String(list.length).padStart(2, "0")}
+            {String(products.length).padStart(2, "0")}
           </span>
         </div>
       </div>
