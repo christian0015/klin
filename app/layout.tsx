@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
@@ -57,6 +58,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${cormorant.variable} ${dmSans.variable}`}>
       <body>
+      <Analytics/>
         <AuthProvider>
           <CartProvider>
             {children}
