@@ -540,7 +540,7 @@ const styles = `
   font-family: var(--font-sans, 'DM Sans', sans-serif);
   font-size: 0.58rem;
   font-weight: 300;
-  color: #2A2A2A;
+  color: #3f3f3f;
   line-height: 1.6;
   letter-spacing: 0.03em;
   max-width: 400px;
@@ -600,7 +600,7 @@ const styles = `
   font-family: var(--font-sans, 'DM Sans', sans-serif);
   font-size: 0.58rem;
   font-weight: 300;
-  color: #3A3A3A;
+  color: #3e3e3e;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -644,12 +644,12 @@ const styles = `
   font-size: 0.8rem;
   font-weight: 300;
   font-style: italic;
-  color: #2A2A2A;
+  color: #5a5a5a;
   letter-spacing: 0.08em;
 }
 
 .nl-footer__sep {
-  color: #1A1A1A;
+  color: #4c4c4c;
   font-size: 0.6rem;
 }
 
@@ -658,7 +658,7 @@ const styles = `
   font-family: var(--font-sans, 'DM Sans', sans-serif);
   font-size: 0.55rem;
   font-weight: 300;
-  color: #1E1E1E;
+  color: #7c7c7c;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }

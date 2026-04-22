@@ -31,19 +31,23 @@ declare global {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SHARED SCROLL STATE
+   SHARED SCROLL STATE — une seule ref, lue dans chaque useFrame
+   Evite les closures multiples sur collectionScrollStore
 ───────────────────────────────────────────────────────────────────────────── */
 
 const scrollState = {
   current: 0,
   previous: 0,
   velocity: 0,
-  /** index de la carte actuellement au "focus" (la plus proche de la caméra) */
-  focusedIndex: 0,
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SHADERS
+   SHADERS — améliorés
+   + grain film procédural (pas de texture externe)
+   + vignette douce
+   + fresnel edge glow beige sable
+   + RGB chromatic aberration améliorée
+   + rounded corners avec AA
 ───────────────────────────────────────────────────────────────────────────── */
 
 const vertexShader = /* glsl */ `
@@ -57,9 +61,12 @@ const vertexShader = /* glsl */ `
     vUv = uv;
     vNormal = normalize(normalMatrix * normal);
 
+    // Micro-ondulation organique (amplitude très faible = quasi gratuit)
     vec3 pos = position;
     float wave = sin(uv.x * 3.14159) * uShift;
-    pos.y += wave * 0.528;
+    pos.y += wave * 0.28;
+
+    // Très légère respiration (0.002 = invisible mais vivant)
     pos.z += sin(uTime * 0.6 + uv.x * 2.0) * 0.002;
 
     vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
@@ -83,6 +90,8 @@ const fragmentShader = /* glsl */ `
   uniform float uHover;
   uniform float uActive;
 
+  /* ── Utilitaires ── */
+
   vec2 coverUv(vec2 uv, vec2 imgSize, vec2 planeSize) {
     float imgRatio = imgSize.x / imgSize.y;
     float planeRatio = planeSize.x / planeSize.y;
@@ -102,6 +111,7 @@ const fragmentShader = /* glsl */ `
     return length(max(dist, 0.0)) - radius;
   }
 
+  // Pseudo-random (hash) pour grain procédural
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
   }
@@ -113,10 +123,13 @@ const fragmentShader = /* glsl */ `
 
   void main() {
     vec2 uv = vUv;
+
+    // Zoom cover
     uv = (uv - 0.5) * uZoom + 0.5;
     uv = coverUv(uv, uImageSize, uPlaneSize);
     uv = clamp(uv, 0.0, 1.0);
 
+    // Chromatic aberration — proportionnelle à la vélocité + légère en idle
     float aberrationBase = 0.003;
     float aberration = aberrationBase + abs(uShift) * 0.022;
     vec2 offsetR = vec2( aberration, 0.0);
@@ -128,22 +141,27 @@ const fragmentShader = /* glsl */ `
 
     vec4 color = vec4(colR.r, colG.g, colB.b, colG.a);
 
+    // Grain film procédural (très léger, 2% d'opacité)
     float g = grain(vUv, uTime);
-    color.rgb += (g - 0.5) * 0.14;
+    color.rgb += (g - 0.5) * 0.04;
 
+    // Vignette douce
     float vignette = 1.0 - dot(vUv - 0.5, (vUv - 0.5) * 1.8);
     vignette = clamp(vignette, 0.0, 1.0);
     color.rgb *= mix(1.0, vignette, 0.35);
 
+    // Fresnel edge glow — beige sable (#D6C3A3) au hover
     vec3 viewDir = normalize(vViewPos);
     float fresnel = 1.0 - abs(dot(vNormal, viewDir));
     fresnel = pow(fresnel, 2.5);
-    vec3 fresnelColor = vec3(0.839, 0.765, 0.639);
+    vec3 fresnelColor = vec3(0.839, 0.765, 0.639); // #D6C3A3
     color.rgb += fresnelColor * fresnel * uHover * 0.35;
 
+    // Légère saturation boost au hover
     float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
     color.rgb = mix(color.rgb, mix(vec3(luminance), color.rgb, 1.18), uHover * 0.5);
 
+    // Rounded corners avec anti-aliasing
     float dist = roundedBox(vUv, uRadius);
     float aa = fwidth(dist);
     float mask = 1.0 - smoothstep(-aa, aa, dist);
@@ -156,7 +174,7 @@ const fragmentShader = /* glsl */ `
 `;
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PARTICLES
+   PARTICLES — 60 points max, geometry statique créée une seule fois
 ───────────────────────────────────────────────────────────────────────────── */
 
 const PARTICLE_COUNT = 60;
@@ -166,6 +184,7 @@ function Particles() {
     const g = new THREE.BufferGeometry();
     const pos = new Float32Array(PARTICLE_COUNT * 3);
     const sizes = new Float32Array(PARTICLE_COUNT);
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       pos[i * 3 + 0] = (Math.random() - 0.5) * 8;
       pos[i * 3 + 1] = (Math.random() - 0.5) * 12;
@@ -191,7 +210,9 @@ function Particles() {
   );
 
   const ref = useRef<THREE.Points>(null!);
+
   useFrame((_, delta) => {
+    // Très lente dérive — quasi gratuit
     ref.current.rotation.y += delta * 0.012;
     ref.current.rotation.x += delta * 0.004;
   });
@@ -200,7 +221,7 @@ function Particles() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SCAN LINE
+   SCAN LINE — décor horizontal animé (1 seul mesh)
 ───────────────────────────────────────────────────────────────────────────── */
 
 function ScanLine() {
@@ -215,9 +236,12 @@ function ScanLine() {
       }),
     []
   );
+
   useFrame((state) => {
-    ref.current.position.y = Math.sin(state.clock.getElapsedTime() * 0.3) * 6;
+    const t = state.clock.getElapsedTime();
+    ref.current.position.y = Math.sin(t * 0.3) * 6;
   });
+
   return (
     <mesh ref={ref} material={mat}>
       <planeGeometry args={[20, 0.002]} />
@@ -226,8 +250,7 @@ function ScanLine() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   CAMERA RIG
-   Calcule aussi l'index focalisé à chaque frame et le stocke dans scrollState
+   CAMERA RIG — centralisé, un seul useFrame pour toute la caméra
 ───────────────────────────────────────────────────────────────────────────── */
 
 function Rig({ count, radius, spacing }: { count: number; radius: number; spacing: number }) {
@@ -235,24 +258,22 @@ function Rig({ count, radius, spacing }: { count: number; radius: number; spacin
   const targetVec = useMemo(() => new THREE.Vector3(), []);
 
   useFrame((state, delta) => {
+    // Mise à jour du scroll state partagé (une seule lecture par frame)
     scrollState.previous = scrollState.current;
     scrollState.current = collectionScrollStore.offset;
     scrollState.velocity = scrollState.current - scrollState.previous;
 
+    // Smooth interpolation
     smoothT.current += (scrollState.current * (count - 1) - smoothT.current) * Math.min(delta * 7, 1);
 
     const t = smoothT.current;
-
-    // ── Focus index : carte dont le t est le plus proche de smoothT ──
-    // On cherche l'index i tel que |i - t| soit minimal (wrap circulaire non
-    // nécessaire ici car le carousel est hélicoïdal, pas wrap)
-    scrollState.focusedIndex = Math.round(Math.min(Math.max(t, 0), count - 1));
-
     const angle = (t / count) * Math.PI * 2;
+
     const camX = Math.sin(angle) * (radius * 3.2);
     const camZ = Math.cos(angle) * (radius * 3.2);
     const camY = -t * spacing;
 
+    // Micro oscillation caméra — Awwwards signature
     const breathX = Math.sin(state.clock.elapsedTime * 0.4) * 0.04;
     const breathY = Math.cos(state.clock.elapsedTime * 0.25) * 0.02;
 
@@ -263,6 +284,7 @@ function Rig({ count, radius, spacing }: { count: number; radius: number; spacin
       delta
     );
 
+    // Smooth lookAt via target vector
     targetVec.set(
       Math.sin(angle) * radius,
       -t * spacing,
@@ -275,30 +297,28 @@ function Rig({ count, radius, spacing }: { count: number; radius: number; spacin
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   MEDIA MESH
-   uHover désormais piloté par isFocused (passé en prop) + hover desktop
+   MEDIA — un seul useFrame par card (shader update)
+   Les uniforms sont mis à jour via ref → zéro re-render React
 ───────────────────────────────────────────────────────────────────────────── */
 
 interface MediaProps {
   url: string;
-  isFocused?: boolean;
+  onHover?: (h: boolean) => void;
 }
 
 function MediaMesh({
   url,
+  onHover,
   isVideo = false,
-  isFocused = false,
 }: MediaProps & { isVideo?: boolean }) {
   const mesh = useRef<THREE.Mesh>(null!);
   const matRef = useRef<THREE.ShaderMaterial>(null!);
+  const [hovered, setHovered] = useState(false);
+  const hoverSmooth = useRef(0);
 
-  const activeSmooth = useRef(0);
-
-  // ✅ NOUVEAU : smoothing du shift
-  const smoothedShift = useRef(0);
-
-  const imgTexture = isVideo ? null : useTexture(url);
-  const vidTexture = isVideo
+  // Texture — hooks séparés selon type
+  const imgTexture = isVideo ? null : useTexture(url); // eslint-disable-line
+  const vidTexture = isVideo                            // eslint-disable-line
     ? useVideoTexture(url, { muted: true, loop: true, start: true })
     : null;
 
@@ -316,70 +336,56 @@ function MediaMesh({
       uHover: { value: 0 },
       uActive: { value: 0 },
     }),
-    []
+    [] // eslint-disable-line
   );
+
+  const handleOver = useCallback(
+    (e: THREE.Event) => {
+      (e as any).stopPropagation();
+      setHovered(true);
+      onHover?.(true);
+    },
+    [onHover]
+  );
+
+  const handleOut = useCallback(() => {
+    setHovered(false);
+    onHover?.(false);
+  }, [onHover]);
 
   useFrame((state, delta) => {
     if (!matRef.current) return;
 
+    // Smooth hover
+    hoverSmooth.current += ((hovered ? 1 : 0) - hoverSmooth.current) * Math.min(delta * 5, 1);
+
     const u = matRef.current.uniforms;
-
-    // ─────────────────────────────
-    // TIME
-    // ─────────────────────────────
     u.uTime.value = state.clock.getElapsedTime();
+    u.uShift.value = scrollState.velocity * 18;
+    u.uHover.value = hoverSmooth.current;
+    u.uZoom.value = 1.18 - hoverSmooth.current * 0.18;
+    u.uRadius.value = 0.12 + hoverSmooth.current * 0.06;
 
-    // ─────────────────────────────
-    // HOVER / ACTIVE SMOOTH
-    // ─────────────────────────────
-    activeSmooth.current +=
-      ((isFocused ? 1 : 0) - activeSmooth.current) * Math.min(delta * 5, 1);
-
-    u.uHover.value = activeSmooth.current;
-
-    // ─────────────────────────────
-    // SHIFT (SMOOTHED VERSION)
-    // ─────────────────────────────
-    const targetShift = scrollState.velocity * 6;
-
-    smoothedShift.current +=
-      (targetShift - smoothedShift.current) * Math.min(delta * 9, 1);
-
-    u.uShift.value = smoothedShift.current;
-
-    // ─────────────────────────────
-    // VISUAL EFFECTS
-    // ─────────────────────────────
-    u.uZoom.value = 1.3 - activeSmooth.current * 0.2;
-    u.uRadius.value = 0.12 + activeSmooth.current * 0.06;
-
-    // ─────────────────────────────
-    // TEXTURE SIZE
-    // ─────────────────────────────
+    // Image size (une fois suffit mais coût nul)
     if (!isVideo && (texture as THREE.Texture).image) {
       const img = (texture as THREE.Texture).image as HTMLImageElement;
-      if (img.naturalWidth)
-        u.uImageSize.value.set(img.naturalWidth, img.naturalHeight);
+      if (img.naturalWidth) u.uImageSize.value.set(img.naturalWidth, img.naturalHeight);
     } else if (isVideo && (texture as THREE.VideoTexture).image) {
       const vid = (texture as THREE.VideoTexture).image as HTMLVideoElement;
-      if (vid.videoWidth)
-        u.uImageSize.value.set(vid.videoWidth, vid.videoHeight);
+      if (vid.videoWidth) u.uImageSize.value.set(vid.videoWidth, vid.videoHeight);
     }
 
-    // ─────────────────────────────
-    // SCALE ANIMATION
-    // ─────────────────────────────
-    const targetScale = 0.76 + activeSmooth.current * 0.14;
-    easing.damp3(
-      mesh.current.scale,
-      [targetScale, targetScale, targetScale],
-      0.12,
-      delta
-    );
+    // Scale
+    const targetScale = 0.76 + hoverSmooth.current * 0.14;
+    easing.damp3(mesh.current.scale, [targetScale, targetScale, targetScale], 0.12, delta);
   });
 
   return (
-    <mesh ref={mesh}>
+    <mesh
+      ref={mesh}
+      onPointerOver={handleOver}
+      onPointerOut={handleOut}
+    >
       <bentPlaneGeometry args={[0.08, 0.9, 0.9, 16, 16]} />
       <shaderMaterial
         ref={matRef}
@@ -394,14 +400,22 @@ function MediaMesh({
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   HUD OVERLAY
+   HUD OVERLAY — HTML DOM via @react-three/drei Html
+   Rendu CSS pur → zéro impact GPU
+   Design éditorial premium : pas de boutons ronds génériques
 ───────────────────────────────────────────────────────────────────────────── */
 
-function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
+function ProductHUD({
+  item,
+  visible,
+}: {
+  item: Product;
+  visible: boolean;
+}) {
   return (
     <Html
       center
-      position={[0, -0.62, 0.05]}
+      position={[0, -0.5262, 0.05]}
       style={{ pointerEvents: visible ? "auto" : "none", userSelect: "none" }}
       distanceFactor={1.8}
       zIndexRange={[10, 20]}
@@ -416,12 +430,14 @@ function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
           textAlign: "center",
         }}
       >
+        {/* Ligne décorative */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", justifyContent: "center" }}>
           <span style={{ display: "block", flex: 1, height: "1px", background: "rgba(214,195,163,0.35)" }} />
           <span style={{ display: "block", width: "4px", height: "4px", borderRadius: "50%", background: "#D6C3A3", opacity: 0.6 }} />
           <span style={{ display: "block", flex: 1, height: "1px", background: "rgba(214,195,163,0.35)" }} />
         </div>
 
+        {/* Nom produit */}
         <p style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontSize: "18px",
@@ -435,6 +451,7 @@ function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
           {item.name}
         </p>
 
+        {/* Tagline */}
         <p style={{
           fontSize: "9px",
           fontWeight: 300,
@@ -446,6 +463,7 @@ function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
           {item.description.short}
         </p>
 
+        {/* Prix */}
         {item.price > 0 && (
           <p style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
@@ -459,6 +477,7 @@ function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
           </p>
         )}
 
+        {/* CTAs */}
         <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
           <a
             href={item.link}
@@ -519,36 +538,26 @@ function ProductHUD({ item, visible }: { item: Product; visible: boolean }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PRODUCT CARD
-   Lit scrollState.focusedIndex via useFrame pour comparer son propre index
-   → zéro prop drilling, zéro re-render React (mise à jour via ref interne)
+   PRODUCT CARD — combine MediaMesh + HUD
 ───────────────────────────────────────────────────────────────────────────── */
 
-function ProductCard({ item, position, rotation, index }: {
+function ProductCard({ item, position, rotation }: {
   item: Product;
   position: [number, number, number];
   rotation: [number, number, number];
-  index: number;
 }) {
-  const [isFocused, setIsFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const mediaUrl = item.media?.[0] ?? "";
   const isVideo = mediaUrl.endsWith(".mp4");
-
-  // On surveille focusedIndex à chaque frame et on setState uniquement si ça change
-  // setState React sur un boolean est batché et très léger
-  useFrame(() => {
-    const focused = scrollState.focusedIndex === index;
-    setIsFocused(prev => prev !== focused ? focused : prev);
-  });
 
   return (
     <group position={position} rotation={rotation}>
       <MediaMesh
         url={mediaUrl}
         isVideo={isVideo}
-        isFocused={isFocused}
+        onHover={setHovered}
       />
-      <ProductHUD item={item} visible={isFocused} />
+      <ProductHUD item={item} visible={true} />
     </group>
   );
 }
@@ -569,7 +578,6 @@ function Carousel({ list, radius, spacing }: {
         return (
           <ProductCard
             key={i}
-            index={i}
             item={item}
             position={[
               Math.sin(angle) * radius,
@@ -585,7 +593,7 @@ function Carousel({ list, radius, spacing }: {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   AMBIENT RING
+   AMBIENT RING — anneau géométrique décoratif (1 seul mesh statique)
 ───────────────────────────────────────────────────────────────────────────── */
 
 function AmbientRing({ radius }: { radius: number }) {
@@ -601,7 +609,7 @@ function AmbientRing({ radius }: { radius: number }) {
     []
   );
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     ref.current.rotation.y += delta * 0.05;
     ref.current.rotation.x += delta * 0.02;
   });
@@ -626,19 +634,33 @@ export default function Caroussel({ list }: { list: Product[] }) {
       <Canvas
         camera={{ position: [0, 0, 10], fov: 35 }}
         style={{ background: "#000" }}
+        // Performance: limite le DPR — crucial sur mobile
         dpr={[1, 1.5]}
+        // Performance: antialiasing désactivé (shader fait son propre AA)
         gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
       >
+        {/* Fog plus profond = meilleur depth cueing */}
         <fog attach="fog" args={["#000000", 8, 35]} />
+
+        {/* Lumière ambiante très douce — sans ombres = coût nul */}
         <ambientLight intensity={0.15} color="#D6C3A3" />
+
+        {/* Fire effect conservé */}
         <Fire scale={[1.1, 8, 1] as any} />
+
+        {/* Décors 3D — tous très légers */}
         <Particles />
         <ScanLine />
         <AmbientRing radius={radius} />
+
+        {/* Rig caméra unique */}
         <Rig count={list.length} radius={radius} spacing={spacing} />
+
+        {/* Cartes produits */}
         <Carousel list={list} radius={radius} spacing={spacing} />
       </Canvas>
 
+      {/* Overlay UI — DOM pur, zéro impact GPU */}
       <div style={{
         position: "absolute",
         bottom: "32px",

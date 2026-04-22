@@ -561,6 +561,7 @@ const styles = `
   position: relative;
   flex: 1;
   overflow: hidden;
+  min-height: 60vh;
 }
 
 .pp-gallery__img {

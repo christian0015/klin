@@ -17,13 +17,43 @@ import TrustSection    from "@/components/TrustSection";
 import FAQ             from "@/components/FAQ";
 import Newsletter      from "@/components/Newsletter";
 
+import Song      from "@/components/song";
+
 export const metadata: Metadata = {
   title: "KLIN — Des pièces simples. Un style maîtrisé.",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+
+  openGraph: {
+    title: "KLIN",
+    description: "No noise. Just presence.",
+    url: "https://klin-official.vercel.app/",
+    siteName: "KLIN",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1254,
+        height: 1254,
+      },
+    ],
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "KLIN",
+    description: "No noise. Just presence.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function HomePage() {
   return (
     <main className="grain">
+      <Song/>
       {/* ── Hero ────────────────────────────────── */}
       <Hero />
 

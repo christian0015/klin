@@ -87,7 +87,7 @@ export default function Hero() {
 
             {/* CTA */}
             <div className="hero-actions">
-              <Link href="#featured" className="hero-cta">
+              <Link href="#collection" className="hero-cta">
                 <span className="hero-cta__text">Voir la sélection</span>
                 <span className="hero-cta__arrow">
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">

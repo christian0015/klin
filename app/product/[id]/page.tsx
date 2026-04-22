@@ -18,17 +18,25 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const product = products.find((p) => String(p.id) === params.id);
-  if (!product) return { title: "Produit introuvable — KLIN" };
+  const { id } = await params;
+
+  const product = products.find((p) => String(p.id) === id);
+
+  if (!product) {
+    return { title: "Vetement — KLIN" };
+  }
+
   return {
     title: `${product.name} — ${brandConfig.name}`,
     description: product.description.short,
     openGraph: {
       title: `${product.name} — ${brandConfig.name}`,
       description: product.description.long,
-      images: product.media[0] ? [{ url: product.media[0] }] : [],
+      images: product.media[0]
+        ? [{ url: product.media[0] }]
+        : [],
     },
   };
 }
