@@ -219,57 +219,41 @@ function MoodModal({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Song() {
-  const [pref, setPref] = useState<AudioPref | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [btnVisible, setBtnVisible] = useState(false);
-  
-  // Référence vers l'élément audio pour le contrôler sans re-render l'iframe
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const todayKey = `klin-audio-${new Date().toISOString().slice(0, 10)}`;
+  // Au montage, on affiche toujours le modal après un court délai
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setShowModal(true);
+      setBtnVisible(true);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, []);
 
-  // Gestion de la lecture/pause réelle
+  // Gestion de la lecture via ref
   useEffect(() => {
     if (audioRef.current) {
       if (playing) {
-        audioRef.current.play().catch((err) => console.log("Autoplay bloqué :", err));
+        audioRef.current.play().catch((err) => {
+          console.warn("Lecture bloquée par le navigateur:", err);
+        });
       } else {
         audioRef.current.pause();
       }
     }
   }, [playing]);
 
-  useEffect(() => {
-    const stored = sessionStorage.getItem(todayKey) as AudioPref | null;
-    if (stored) {
-      setPref(stored);
-      setPlaying(stored === "yes");
-      setBtnVisible(true);
-    } else {
-      const t = setTimeout(() => {
-        setShowModal(true);
-        setBtnVisible(true);
-      }, 1400);
-      return () => clearTimeout(t);
+  const handleChoice = useCallback((choice: AudioPref) => {
+    setShowModal(false);
+    if (choice === "yes") {
+      setPlaying(true);
     }
-  }, [todayKey]);
-
-  const handleChoice = useCallback(
-    (choice: AudioPref) => {
-      sessionStorage.setItem(todayKey, choice);
-      setPref(choice);
-      setShowModal(false);
-      setPlaying(choice === "yes");
-    },
-    [todayKey]
-  );
+  }, []);
 
   const toggle = () => {
-    if (pref === null) {
-      setShowModal(true);
-      return;
-    }
     setPlaying((p) => !p);
   };
 
@@ -300,16 +284,11 @@ export default function Song() {
           display: "flex",
           alignItems: "center",
           padding: playing ? "9px 14px 9px 12px" : "9px 12px",
-          gap: 0,
-          background: playing
-            ? "rgba(255,255,255,0.06)"
-            : "transparent",
+          background: playing ? "rgba(255,255,255,0.06)" : "transparent",
           border: `1px solid ${playing ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.1)"}`,
-          borderRadius: 0,
           color: "white",
           cursor: "pointer",
-          transition:
-            "background 0.4s ease, border-color 0.4s ease, padding 0.3s ease, opacity 0.4s ease",
+          transition: "all 0.4s ease",
           opacity: btnVisible ? 1 : 0,
           animationName: btnVisible ? "klin-fade-in" : "none",
           animationDuration: "0.6s",
@@ -322,7 +301,6 @@ export default function Song() {
         {playing && <WaveBars />}
       </button>
 
-      {/* Audio natif - Assure-toi que le fichier est bien dans /public/ */}
       <audio
         ref={audioRef}
         src="/Slow touchRnB_Soul Chill Mix 🔥 Best R&B Bedroom Playlist - NUDIO (mp3cut.net).mp3"
