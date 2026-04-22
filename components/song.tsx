@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +83,6 @@ function MoodModal({
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Delay mount → fade-in after page settle
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
@@ -117,7 +116,6 @@ function MoodModal({
           transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease",
         }}
       >
-        {/* Accent line top */}
         <div
           style={{
             position: "absolute",
@@ -130,7 +128,6 @@ function MoodModal({
           }}
         />
 
-        {/* Icon */}
         <div
           style={{
             width: 52,
@@ -146,7 +143,6 @@ function MoodModal({
           <HeadphoneIcon active={true} />
         </div>
 
-        {/* Heading */}
         <p
           style={{
             fontFamily: "var(--font-serif, Georgia, serif)",
@@ -161,7 +157,6 @@ function MoodModal({
           Set the mood
         </p>
 
-        {/* Sub */}
         <p
           style={{
             fontFamily: "var(--font-sans, system-ui, sans-serif)",
@@ -178,7 +173,6 @@ function MoodModal({
           pour une expérience complète
         </p>
 
-        {/* Buttons */}
         <div style={{ display: "flex", gap: "12px" }}>
           <button
             onClick={() => onChoice("yes")}
@@ -195,8 +189,6 @@ function MoodModal({
               cursor: "pointer",
               transition: "opacity 0.2s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Activer
           </button>
@@ -215,14 +207,6 @@ function MoodModal({
               cursor: "pointer",
               transition: "color 0.2s, border-color 0.2s",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "rgba(255,255,255,0.7)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(255,255,255,0.4)";
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-            }}
           >
             Non merci
           </button>
@@ -239,9 +223,22 @@ export default function Song() {
   const [showModal, setShowModal] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [btnVisible, setBtnVisible] = useState(false);
+  
+  // Référence vers l'élément audio pour le contrôler sans re-render l'iframe
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // sessionStorage key = one per calendar day
   const todayKey = `klin-audio-${new Date().toISOString().slice(0, 10)}`;
+
+  // Gestion de la lecture/pause réelle
+  useEffect(() => {
+    if (audioRef.current) {
+      if (playing) {
+        audioRef.current.play().catch((err) => console.log("Autoplay bloqué :", err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [playing]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(todayKey) as AudioPref | null;
@@ -250,7 +247,6 @@ export default function Song() {
       setPlaying(stored === "yes");
       setBtnVisible(true);
     } else {
-      // Show popup after page settles
       const t = setTimeout(() => {
         setShowModal(true);
         setBtnVisible(true);
@@ -279,7 +275,6 @@ export default function Song() {
 
   return (
     <>
-      {/* Keyframes injected once */}
       <style>{`
         @keyframes klin-wave {
           from { transform: scaleY(0.3); }
@@ -291,10 +286,8 @@ export default function Song() {
         }
       `}</style>
 
-      {/* Mood modal */}
       {showModal && <MoodModal onChoice={handleChoice} />}
 
-      {/* Toggle pill — fixed top-left */}
       <button
         onClick={toggle}
         title={playing ? "Couper l'ambiance" : "Activer l'ambiance"}
@@ -324,41 +317,18 @@ export default function Song() {
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
         }}
-        onMouseEnter={(e) => {
-          if (!playing) {
-            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!playing) {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-          }
-        }}
       >
         <HeadphoneIcon active={playing} />
         {playing && <WaveBars />}
       </button>
 
-      {/* Hidden audio via YouTube embed */}
-      {playing && (
-        <iframe
-          width="0"
-          height="0"
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            opacity: 0,
-            pointerEvents: "none",
-            border: "none",
-          }}
-          src="https://www.youtube.com/embed/rC4F-Wwrr5E?start=2225&autoplay=1&loop=1&playlist=rC4F-Wwrr5E"
-          allow="autoplay"
-          title="KLIN ambient sound"
-        />
-      )}
+      {/* Audio natif - Assure-toi que le fichier est bien dans /public/ */}
+      <audio
+        ref={audioRef}
+        src="/Slow touchRnB_Soul Chill Mix 🔥 Best R&B Bedroom Playlist - NUDIO (mp3cut.net).mp3"
+        loop
+        preload="auto"
+      />
     </>
   );
 }
